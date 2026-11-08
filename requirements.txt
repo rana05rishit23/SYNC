@@ -7,3 +7,4 @@ pillow
 pytest
 httpx
 groq
+python-multipart
