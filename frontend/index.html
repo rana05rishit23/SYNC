@@ -367,6 +367,20 @@ async function uploadDoc(input, docLabel) {
   render();
 }
 
+async function demoVerify(type) {
+  if (!S.consent) await setConsent(true);
+  if (type === 'K01') {
+    if ($('#gi')) $('#gi').value = '32TTNXB7384T1ZW';
+    await vf();
+    S.docsUploaded = true;
+    S.kycMsg = '<b class="ok">✓ GSTIN Certificate & Signatory ID Approved</b><br>Balaji Dental Care LLP verified against GST registry (Confidence: 94.2%, Mod-36 Valid). Address proof verified.';
+  } else if (type === 'K03') {
+    S.docsUploaded = true;
+    S.kycMsg = '<b class="ok">✓ Udyam MSME Certificate & ID Approved</b><br>UDYAM-KR-03-0123456 verified against MSME registry (Confidence: 89.1%). Signatory Aadhaar linked.';
+  }
+  render();
+}
+
 function v3(){
   const v=S.ver,ok=S.consent&&(!S.f.gstOn||(v&&!v.err)),d=S.consent?'':'disabled';
   return `<section class="card">
@@ -381,8 +395,15 @@ function v3(){
     ${v?`<div class="note">${v.err?`<span class="bad">${v.err}</span>`:`<b>${v.name}</b> · ${v.masked||mask(v.g)}<br><span class="${v.st=='Active'?'ok':'bad'}">${v.st}</span>${v.cut?`<br>Because this GSTIN is ${v.st.toLowerCase()}, we removed: ${v.cut}`:''}`}</div>`:''}
   `:''}
 
+  <div class="mute" style="margin-top:14px;margin-bottom:6px">Upload Documents for Verification:</div>
   ${['Udyam certificate','Signatory ID','Address proof (under 90 days old)'].map(x=>`<label>${x}<input type="file" accept="image/*,.pdf" ${d} onchange="uploadDoc(this, '${x}')"></label>`).join('')}
   
+  <div class="mute" style="margin-top:10px;margin-bottom:6px">Or quick-verify with demo specimen:</div>
+  <div style="margin-bottom:12px">
+    <span class="chip" onclick="demoVerify('K01')">⚡ Specimen K01 (GST Certificate + ID)</span>
+    <span class="chip" onclick="demoVerify('K03')">⚡ Specimen K03 (Udyam MSME + ID)</span>
+  </div>
+
   ${S.kycMsg?`<div class="note">${S.kycMsg}</div>`:''}
   <p class="mute">Live 4-Layer KYC Pipeline: Adaptive Watermark OCR → Checksum Repair → Registry Cross-Check → Human Review Queue.</p>
   <button class="btn" ${ok?'':'disabled'} onclick="S.order='UD-'+String(Date.now()).slice(-5);S.step=4;render()">Place Order</button>

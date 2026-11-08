@@ -213,7 +213,59 @@ class FakeLLM:
                     "tool_calls": [],
                 }
 
-        if any(w in last_user for w in ["quote", "proceed", "ready", "confirm"]) or any(w in last_user for w in ["staff", "employee", "people"]):
+        # Check if a template was already recommended in the conversation history
+        has_template = any(
+            (m.get("role") == "tool" and "template" in m.get("content", ""))
+            or ("recommended setup includes" in m.get("content", "").lower())
+            or ("how many team members" in m.get("content", "").lower())
+            for m in messages
+        )
+        tmpl_seg = "micro"
+        for m in messages:
+            content = m.get("content", "").lower()
+            if any(w in content for w in ["office", "clinic", "ca", "doctor", "law", "professional"]):
+                tmpl_seg = "office"
+            elif any(w in content for w in ["multi", "chain", "branches", "retail chain"]):
+                tmpl_seg = "multisite"
+            elif any(w in content for w in ["factory", "manufacturing", "plant", "unit", "workshop"]):
+                tmpl_seg = "manufacturing"
+
+        # Detect segment and employee count from user text
+        detected_seg = tmpl_seg
+        emp_count = 8 if tmpl_seg == "office" else (12 if tmpl_seg == "multisite" else 3)
+        sites_count = 3 if tmpl_seg == "multisite" else 1
+
+        all_text = " ".join([m.get("content", "") for m in user_msgs]).lower()
+        if any(w in last_user for w in ["office", "clinic", "ca", "firm", "doctor", "law", "consulting", "professional", "सीए"]):
+            detected_seg = "office"
+            emp_count = 8
+        elif any(w in last_user for w in ["multi", "chain", "branches", "multisite", "शाखा"]):
+            detected_seg = "multisite"
+            emp_count = 12
+            sites_count = 3
+        elif any(w in last_user for w in ["factory", "manufacturing", "plant", "unit", "workshop", "कारखाना"]):
+            detected_seg = "manufacturing"
+            emp_count = 20
+
+        import re
+        num_match = re.search(r"\b(\d+)\b", last_user)
+        if num_match:
+            emp_count = max(1, min(int(num_match.group(1)), 500))
+
+        # If user provides headcount, asks for quote, or already had template recommended, propose bundle
+        has_headcount_or_intent = (
+            any(w in last_user for w in [
+                "quote", "proceed", "ready", "confirm", "staff", "employee", "people", "person",
+                "log", "team", "members", "aadmi", "chahiye", "kar rahe", "काम"
+            ])
+            or bool(num_match)
+            or has_template
+        )
+
+        if has_headcount_or_intent and any(w in all_text for w in [
+            "kirana", "bakery", "shop", "clinic", "office", "store", "factory", "chain", "ca", "firm",
+            "किराना", "दुकान", "शाखा", "कारखाना", "quote", "staff", "employee", "people", "log"
+        ]):
             return {
                 "role": "assistant",
                 "content": "",
@@ -223,10 +275,10 @@ class FakeLLM:
                     "function": {
                         "name": "tool_propose_and_quote_bundle",
                         "arguments": json.dumps({
-                            "segment": "micro",
+                            "segment": detected_seg,
                             "city_tier": 2,
-                            "employees": 3,
-                            "sites": 1,
+                            "employees": emp_count,
+                            "sites": sites_count,
                             "term_months": 12,
                         }),
                     },
@@ -234,7 +286,7 @@ class FakeLLM:
             }
 
         if any(w in last_user for w in [
-            "kirana", "bakery", "shop", "clinic", "office", "store", "factory", "chain", "branches",
+            "kirana", "bakery", "shop", "clinic", "office", "store", "factory", "chain", "branches", "ca",
             "किराना", "दुकान", "शाखा", "कारखाना", "தொழிற்சாலை", "உற்பத்தி"
         ]):
             return {
