@@ -1,7 +1,22 @@
 """Probe: can plain Tesseract read the specimen docs well enough? (decides OCR strategy)"""
-import glob, os, pytesseract, re
+from pathlib import Path
+import pytesseract
 from PIL import Image
-for kind in ["gst_certificate", "udyam_certificate", "signatory_id", "address_proof"]:
-    f = sorted(glob.glob(f"data/kyc_documents/K0[1-3]_{kind}.png"))[1]  # a sample per type
-    txt = pytesseract.image_to_string(Image.open(f))
-    print("=====", os.path.basename(f)); print("\n".join(l for l in txt.splitlines() if l.strip())[:700])
+
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+
+print("=== Probing data/kyc_documents (Synthetic Smoke Set) ===")
+for p in sorted((DATA_DIR / "kyc_documents").glob("*.png")):
+    txt = pytesseract.image_to_string(Image.open(p))
+    first_lines = [line.strip() for line in txt.splitlines() if line.strip()][:3]
+    print(f"[{p.name}] -> {first_lines}")
+
+if (DATA_DIR / "kyc_official").exists():
+    print("\n=== Probing data/kyc_official (Official Hackathon Specimen Set) ===")
+    for kind in ["gst_certificate", "udyam_certificate", "signatory_id", "address_proof"]:
+        matches = sorted((DATA_DIR / "kyc_official").glob(f"K01_{kind}.png"))
+        if matches:
+            p = matches[0]
+            txt = pytesseract.image_to_string(Image.open(p))
+            first_lines = [line.strip() for line in txt.splitlines() if line.strip()][:3]
+            print(f"[{p.name}] -> {first_lines}")

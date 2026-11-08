@@ -30,6 +30,10 @@ from .advisor import (
 from .catalogue import BusinessProfile, load_catalogue, validate_bundle
 from .config import get_settings
 from .i18n import get_translations
+from starlette.concurrency import run_in_threadpool
+
+from .docscan import scan
+from .kyc_case import verify_case
 from .kyc import (
     KYCResult,
     ReviewItem,
@@ -184,12 +188,15 @@ def chat_turn(req: ChatRequest):
     ctx = SESSIONS.get_or_create_context(req.session_id, req.preferred_language)
 
     # Automatic language detection (Layer A + Layer B)
-    detection = detect(req.message)
+    is_live = bool(SETTINGS.groq_api_key)
+    detection = detect(
+        req.message,
+        GroqLLMClient(api_key=SETTINGS.groq_api_key, model=SETTINGS.fast_model) if is_live else None,
+    )
     if detection.confidence >= 0.7:
         ctx.preferred_language = detection.language
 
     # Use Groq client if API key is provided and not disabled, else use Mock client
-    is_live = bool(SETTINGS.groq_api_key)
     if is_live:
         client = GroqLLMClient(api_key=SETTINGS.groq_api_key, model=SETTINGS.advisor_model)
     else:
@@ -203,6 +210,7 @@ def chat_turn(req: ChatRequest):
         "message": result.message,
         "detected_language": detection.language,
         "language_confidence": detection.confidence,
+        "ask_language": detection.confidence < 0.7,
         "quick_chips": result.quick_chips,
         "next_step": result.next_step,
         "bundle": result.bundle,
@@ -214,6 +222,7 @@ def chat_turn(req: ChatRequest):
         "segment": ctx.segment,
         "groq_configured": is_live,
         "is_mock": not is_live,
+        "grounding": result.grounding,
     }
 
 
@@ -389,27 +398,14 @@ def submit_consent(req: ConsentRequest):
 # Smart KYC Document Pipeline Endpoints
 # ---------------------------------------------------------------------------
 
-@app.post("/api/kyc/upload")
-async def upload_kyc_document(
-    session_id: str = Form(..., pattern=SESSION_ID_PATTERN, description="Active session ID with recorded consent"),
-    file: UploadFile = File(..., description="Uploaded document image (PNG/JPEG/PDF), max 8 MB"),
-):
-    """Intake KYC document, enforce privacy consent gate, and run 4-layer verification pipeline."""
-    if not SESSIONS.has_consent(session_id):
-        raise HTTPException(
-            status_code=403,
-            detail="Consent required before document upload and KYC processing.",
-        )
-
+async def _save_upload(file: UploadFile) -> Path:
+    """Validate and store one upload under a server-chosen name. Caller must delete the file."""
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in ALLOWED_UPLOAD_SUFFIXES:
         raise HTTPException(status_code=415, detail="Upload a PNG, JPEG or PDF file.")
-
-    # The server picks the filename: nothing user-controlled goes into the path.
     temp_dir = Path(tempfile.gettempdir()) / "udyam_kyc_uploads"
     temp_dir.mkdir(parents=True, exist_ok=True)
     temp_path = temp_dir / f"{uuid.uuid4().hex}{suffix}"
-
     try:
         written = 0
         with open(temp_path, "wb") as buffer:
@@ -418,15 +414,50 @@ async def upload_kyc_document(
                 if written > MAX_UPLOAD_BYTES:
                     raise HTTPException(status_code=413, detail="File too large (limit 8 MB).")
                 buffer.write(chunk)
+    except BaseException:
+        temp_path.unlink(missing_ok=True)
+        raise
+    return temp_path
 
+
+@app.post("/api/kyc/upload")
+async def upload_kyc_document(
+    session_id: str = Form(..., pattern=SESSION_ID_PATTERN, description="Active session ID with recorded consent"),
+    file: UploadFile = File(..., description="Uploaded document image (PNG/JPEG/PDF), max 8 MB"),
+):
+    """Intake one KYC document, enforce the consent gate, and run the per-document verification pipeline."""
+    if not SESSIONS.has_consent(session_id):
+        raise HTTPException(status_code=403, detail="Consent required before document upload and KYC processing.")
+    temp_path = await _save_upload(file)
+    try:
         result = run_kyc_pipeline(session_id=session_id, image_path=temp_path)
         SESSIONS.save_kyc_result(session_id, result)
         return asdict(result)
     finally:
-        try:
-            temp_path.unlink(missing_ok=True)
-        except OSError:
-            pass  # best effort; the OS temp directory is cleaned separately
+        temp_path.unlink(missing_ok=True)
+
+
+@app.post("/api/kyc/case")
+async def verify_kyc_case(
+    session_id: str = Form(..., pattern=SESSION_ID_PATTERN),
+    files: list[UploadFile] = File(..., description="GST certificate, Udyam certificate, signatory ID, address proof"),
+):
+    """Verify an applicant's documents together: registry status, cross-document consistency, dates, quality."""
+    if not SESSIONS.has_consent(session_id):
+        raise HTTPException(status_code=403, detail="Consent required before document upload and KYC processing.")
+    if not 1 <= len(files) <= 6:
+        raise HTTPException(status_code=422, detail="Upload between 1 and 6 documents.")
+    paths: list[Path] = []
+    try:
+        for f in files:
+            paths.append(await _save_upload(f))
+        docs = [await run_in_threadpool(scan, p) for p in paths]
+    finally:
+        for p in paths:
+            p.unlink(missing_ok=True)
+    decision = verify_case(docs)
+    SESSIONS.save_kyc_result(session_id, decision)
+    return asdict(decision)
 
 
 @app.get("/api/kyc/status/{session_id}")

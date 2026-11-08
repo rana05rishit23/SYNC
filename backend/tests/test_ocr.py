@@ -186,3 +186,91 @@ def test_extract_document_integration(tmp_path: Path):
         assert doc.extracted_name == "Balaji Dental Care LLP"
         assert doc.extracted_address == "Kochi, Kerala"
         assert doc.confidence == 88.5
+
+
+# ---------------------------------------------------------------------------
+# Real Image Integration Tests (using data/kyc_documents/ synthetic images)
+# ---------------------------------------------------------------------------
+KYC_DOCS_DIR = Path(__file__).resolve().parents[2] / "data" / "kyc_documents"
+requires_kyc_docs = pytest.mark.skipif(
+    not KYC_DOCS_DIR.exists() or not (KYC_DOCS_DIR / "K01_gstin_active.png").exists(),
+    reason="data/kyc_documents synthetic specimens not present",
+)
+
+
+@requires_kyc_docs
+def test_real_image_k01_active_gstin():
+    from backend.app.registries import verify_gstin_with_repair
+
+    doc = extract_document(KYC_DOCS_DIR / "K01_gstin_active.png")
+    assert doc.doc_type == "gstin_cert"
+    assert doc.extracted_gstin == "32TTNXB7384T1ZW"
+    assert "Balaji Dental Care" in (doc.extracted_name or "")
+    assert doc.confidence >= 85.0
+
+    rec, notes = verify_gstin_with_repair(doc.extracted_gstin)
+    assert rec is not None
+    assert rec.status == "Active"
+    assert "Balaji Dental Care" in rec.trade_name
+
+
+@requires_kyc_docs
+def test_real_image_k02_cancelled_gstin_with_repair():
+    from backend.app.registries import verify_gstin_with_repair
+
+    doc = extract_document(KYC_DOCS_DIR / "K02_gstin_cancelled.png")
+    assert doc.doc_type == "gstin_cert"
+    assert "Neha Kaur" in (doc.extracted_name or "")
+    assert doc.confidence >= 85.0
+
+    # The OCR text is repaired through structured confusable recovery to the cancelled registry entry
+    rec, notes = verify_gstin_with_repair(doc.extracted_gstin or "")
+    assert rec is not None
+    assert rec.status == "Cancelled"
+    assert "Vindhya Tours" in rec.trade_name
+
+
+@requires_kyc_docs
+def test_real_image_k03_udyam_active():
+    from backend.app.registries import lookup_udyam
+
+    doc = extract_document(KYC_DOCS_DIR / "K03_udyam_active.png")
+    assert doc.doc_type == "udyam_cert"
+    assert doc.extracted_udyam == "UDYAM-KL-00-3078801"
+    assert "Balaji Dental Care" in (doc.extracted_name or "")
+    assert doc.confidence >= 85.0
+
+    rec = lookup_udyam(doc.extracted_udyam)
+    assert rec is not None
+    assert rec.enterprise_name == "Balaji Dental Care LLP"
+    assert rec.city == "Kochi"
+
+
+@requires_kyc_docs
+def test_real_image_k04_watermarked_gstin_suppressed():
+    from backend.app.registries import verify_gstin_with_repair
+
+    # Watermarked certificate: Otsu / adaptive thresholding suppresses background watermark
+    doc = extract_document(KYC_DOCS_DIR / "K04_gstin_watermarked.png")
+    assert doc.doc_type == "gstin_cert"
+    assert doc.extracted_gstin == "32TTNXB7384T1ZW"
+    assert "Balaji Dental Care" in (doc.extracted_name or "")
+    assert doc.confidence >= 80.0
+
+    rec, _ = verify_gstin_with_repair(doc.extracted_gstin)
+    assert rec is not None
+    assert rec.status == "Active"
+
+
+@requires_kyc_docs
+def test_real_image_k05_cancelled_clean():
+    from backend.app.registries import verify_gstin_with_repair
+
+    doc = extract_document(KYC_DOCS_DIR / "K05_gstin_cancelled_clean.png")
+    assert doc.doc_type == "gstin_cert"
+    assert "Ishita Menon" in (doc.extracted_name or "")
+
+    rec, notes = verify_gstin_with_repair(doc.extracted_gstin or "")
+    assert rec is not None
+    assert rec.status == "Cancelled"
+    assert "Prime General Store" in rec.trade_name

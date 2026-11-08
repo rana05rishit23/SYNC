@@ -19,6 +19,7 @@ from .registries import lookup_gstin, verify_gstin_with_repair
 from .templates import TEMPLATES, detect_segment, get_segment_template, propose_bundle
 
 logger = logging.getLogger(__name__)
+MAX_TOOL_ROUNDS = 3
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ class AdvisorTurnResult:
     available_addons: list[dict[str, Any]] | None = None
     validation_issues: list[str] = field(default_factory=list)
     next_step: str = "continue_chat"
+    grounding: str = "ok"          # ok | retried | fallback (see guard.py)
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +85,9 @@ class AdvisorTurnResult:
 # ---------------------------------------------------------------------------
 
 from .llm import LLM, GroqLLM, FakeLLM
+from .language import language_name
+from .guard import (MAX_EMPLOYEES, MAX_QTY, MAX_SITES, allowed_numbers, bounded_int,
+                    fallback_message, ungrounded_numbers)
 
 # Unified aliases for backwards compatibility
 LLMClient = LLM
@@ -115,7 +120,7 @@ ADVISOR_TOOLS = [
         "type": "function",
         "function": {
             "name": "tool_get_eligible_products",
-            "description": "Deterministically retrieve all catalogue products this business profile is eligible to buy.",
+            "description": "Query product catalogue filtered strictly by customer business profile constraints (city tier, employees, sites, GSTIN).",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -132,7 +137,7 @@ ADVISOR_TOOLS = [
         "type": "function",
         "function": {
             "name": "tool_check_gstin",
-            "description": "Validate GSTIN checksum and verify against mock GSTIN registry. Detects if Active, Cancelled or Suspended.",
+            "description": "Verify GSTIN against mock registry with automatic OCR error repair. Returns legal name and Active/Cancelled/Suspended status.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -146,7 +151,7 @@ ADVISOR_TOOLS = [
         "type": "function",
         "function": {
             "name": "tool_propose_and_quote_bundle",
-            "description": "Propose and price a rule-validated bundle for 12 and 24 month terms. Returns prices, setup fees, and available add-ons.",
+            "description": "Validate and price a package deterministically. Computes transparent 12m and 24m commitments, savings, and add-ons.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -169,6 +174,17 @@ ADVISOR_TOOLS = [
 # Tool Execution Engine
 # ---------------------------------------------------------------------------
 
+def _profile_args(args: dict[str, Any], context: AdvisorContext) -> tuple[int, int, int, str | None]:
+    """Slot values proposed by the LLM, bounded. GST status is never taken from the LLM (ADR-014):
+    only a registry check (tool_check_gstin) sets it, so a model cannot unlock GST-gated products."""
+    return (
+        bounded_int(args.get("city_tier"), context.city_tier, 1, 2),
+        bounded_int(args.get("employees"), context.employees, 1, MAX_EMPLOYEES),
+        bounded_int(args.get("sites"), context.sites, 1, MAX_SITES),
+        context.gstin_status,
+    )
+
+
 def execute_tool(
     name: str,
     args: dict[str, Any],
@@ -188,7 +204,7 @@ def execute_tool(
         context.segment = seg
         context.stage = "profiling"
         if "city_tier" in args:
-            context.city_tier = int(args["city_tier"])
+            context.city_tier = bounded_int(args["city_tier"], context.city_tier, 1, 2)
         if "city" in args and args["city"] != "auto":
             context.city = args["city"]
         tmpl = get_segment_template(seg)
@@ -204,12 +220,7 @@ def execute_tool(
         return result, None, None, None
 
     elif name == "tool_get_eligible_products":
-        tier = int(args.get("city_tier", context.city_tier))
-        emp = int(args.get("employees", context.employees))
-        sites = int(args.get("sites", context.sites))
-        gst = args.get("gstin_status") or context.gstin_status
-        if gst == "None":
-            gst = None
+        tier, emp, sites, gst = _profile_args(args, context)
         prof = BusinessProfile(city_tier=tier, employees=emp, sites=sites, gstin_status=gst)
         prods = [
             {
@@ -246,14 +257,10 @@ def execute_tool(
             return {"valid": False, "notes": notes}, None, None, None
 
     elif name == "tool_propose_and_quote_bundle":
-        seg = args.get("segment", context.segment)
-        tier = int(args.get("city_tier", context.city_tier))
-        emp = int(args.get("employees", context.employees))
-        sites = int(args.get("sites", context.sites))
-        gst = args.get("gstin_status") or context.gstin_status
-        if gst == "None":
-            gst = None
-        term = int(args.get("term_months", context.term_months))
+        seg = args.get("segment") if args.get("segment") in ("micro", "prof", "multi", "mfg") else context.segment
+        tier, emp, sites, gst = _profile_args(args, context)
+        term = bounded_int(args.get("term_months"), context.term_months, 12, 24)
+        term = term if term in (12, 24) else context.term_months
 
         context.segment = seg
         context.city_tier = tier
@@ -267,7 +274,12 @@ def execute_tool(
         # Get items: custom or auto-proposed
         custom = args.get("custom_items")
         if custom and isinstance(custom, dict):
-            items = {k: int(v) for k, v in custom.items()}
+            items = {}
+            for k, v in custom.items():
+                q = bounded_int(v, 0, 1, MAX_QTY)
+                if q == 0 or k not in cat:
+                    return {"valid": False, "issues": [f"Unknown product or invalid quantity for {k}."]}, None, None, None
+                items[str(k)] = q
         else:
             items = propose_bundle(seg, prof, catalogue=cat)
 
@@ -313,20 +325,19 @@ def execute_tool(
         q12_summary = _to_summary(q12)
         q24_summary = _to_summary(q24)
 
-        # Compute available add-ons
-        addons = available_addons(prof, items, cat)
+        # Curated Add-ons
+        addons_list = available_addons(prof, items, cat)
         addons_out = [
             {
-                "product_id": p.product_id,
-                "name": p.name,
-                "category": p.category,
-                "unit": p.unit,
-                "price_12m": unit_price(p, 12),
-                "price_24m": unit_price(p, 24),
-                "setup_fee": p.setup_fee,
-                "description": p.description,
+                "product_id": a.product_id,
+                "name": a.name,
+                "category": a.category,
+                "unit": a.unit,
+                "unit_price_12m": unit_price(a, 12),
+                "unit_price_24m": unit_price(a, 24),
+                "setup_fee": a.setup_fee,
             }
-            for p in addons
+            for a in addons_list
         ]
 
         result = {
@@ -334,33 +345,30 @@ def execute_tool(
             "bundle": items,
             "quote_12m": asdict(q12_summary),
             "quote_24m": asdict(q24_summary),
-            "addons_count": len(addons_out),
+            "available_addons_count": len(addons_out),
         }
         return result, q12_summary, q24_summary, addons_out
 
-    return {"error": f"Unknown tool {name}"}, None, None, None
+    return {"error": f"Unknown tool: {name}"}, None, None, None
 
 
 # ---------------------------------------------------------------------------
-# Advisor Orchestration Loop
+# Conversational Agent Loop
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are the Accel Business Digital Onboarding Advisor for Indian SMBs (kirana stores, clinics, CA/law offices, retail stores, small factories).
-Your goal is to guide the owner to an optimal telecom and digital bundle in under 3 minutes.
+SYSTEM_PROMPT = """You are the Accel Business Digital Onboarding Advisor for Indian MSMEs.
+Your role is to converse warmly, understand the customer's business needs, and recommend an optimal connectivity and digital package.
 
-Follow the Adaptive Hybrid Flow:
-1. Greet warmly in the customer's language (Hindi / English / Hinglish / Marathi / Tamil / etc.).
-2. Ask their business type and location (Tier 1 Metro or Tier 2 City). Use short, simple questions.
-3. Once business type is given, immediately invoke `tool_detect_and_recommend_template` to fetch the tailored segment bundle and chips.
-4. Ask 1-2 quick targeted questions (number of employees/counters, need for CCTV/billing POS, or GSTIN).
-5. Propose the bundle using `tool_propose_and_quote_bundle` so the deterministic pricing engine generates verified prices for 12 and 24-month terms.
-6. Present the quote transparently: monthly charge, setup fee, install timeframe, and the 24-month savings.
-7. Invite them to toggle add-ons or proceed directly to paperless KYC verification.
-
-CRITICAL RULES:
-- Never invent prices, eligibility rules, or discounts. All pricing and validation must come from the tools.
-- Never show technical error codes. Speak respectfully and simply.
-- If the customer writes in Hindi/Hinglish, reply in Hindi/Hinglish.
+CORE RULES:
+1. Grounding: You do NOT invent pricing, discounts, installation days, or product rules.
+   You MUST call tools to calculate quotes, verify GSTINs, and fetch templates.
+2. Tone: Helpful, concise, respectful, transparent. Never pushy.
+3. Multi-turn flow:
+   - Turn 1: Warm greeting, ask business type and city.
+   - Turn 2: Call tool_detect_and_recommend_template, ask for employee count and GSTIN status.
+   - Turn 3: Call tool_propose_and_quote_bundle, present the verified quote with 12m and 24m term pricing clearly showing monthly savings.
+4. Always highlight the transparent monthly price and one-time setup fee returned by the tools.
+5. If the customer mentions a GSTIN, always verify it with tool_check_gstin.
 """
 
 
@@ -378,36 +386,42 @@ def run_advisor_turn(
     context.history.append({"role": "user", "content": user_message})
 
     # Prepare message history for LLM
-    llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    system = SYSTEM_PROMPT + (
+        f"\n\nCUSTOMER LANGUAGE: {language_name(context.preferred_language)}. Reply in this language and script; if the "
+        "customer mixes languages, mirror them. Always write prices and numbers with digits 0-9 and the \u20b9 symbol."
+    )
+    llm_messages = [{"role": "system", "content": system}]
     # Add recent history (up to last 10 messages)
     llm_messages.extend(context.history[-10:])
 
-    # First LLM call
     response = llm.chat(llm_messages, tools=ADVISOR_TOOLS)
 
     final_quote_12m: QuoteSummary | None = None
     final_quote_24m: QuoteSummary | None = None
     final_addons: list[dict[str, Any]] | None = None
     validation_issues: list[str] = []
+    tool_results: list[dict[str, Any]] = []
 
-    # Handle tool calls if any
-    tool_calls = response.get("tool_calls", [])
-    if tool_calls:
-        # Append assistant tool-call message
+    rounds = 0
+    while response.get("tool_calls") and rounds < MAX_TOOL_ROUNDS:
+        rounds += 1
+        tool_calls = response["tool_calls"]
         llm_messages.append({
             "role": "assistant",
             "content": response.get("content") or "",
             "tool_calls": tool_calls,
         })
-
         for tc in tool_calls:
             fn_name = tc["function"]["name"]
             try:
                 fn_args = json.loads(tc["function"]["arguments"]) if isinstance(tc["function"]["arguments"], str) else tc["function"]["arguments"]
-            except Exception:
+            except (json.JSONDecodeError, TypeError):
+                fn_args = {}
+            if not isinstance(fn_args, dict):
                 fn_args = {}
 
             tool_result, q12, q24, addons = execute_tool(fn_name, fn_args, context, cat)
+            tool_results.append(tool_result)
             if q12:
                 final_quote_12m = q12
                 final_quote_24m = q24
@@ -421,12 +435,28 @@ def run_advisor_turn(
                 "name": fn_name,
                 "content": json.dumps(tool_result),
             })
+        response = llm.chat(llm_messages, tools=ADVISOR_TOOLS)
+    assistant_text = (response.get("content") or "").strip()
 
-        # Second LLM call with tool results
-        second_response = llm.chat(llm_messages, tools=ADVISOR_TOOLS)
-        assistant_text = second_response.get("content", "")
-    else:
-        assistant_text = response.get("content", "")
+    # Grounding gate: the text the customer reads may not contain numbers the tools did not produce.
+    allowed = allowed_numbers(
+        tool_results, cat, [m["content"] for m in context.history if m["role"] == "user"],
+        {context.employees, context.sites, context.city_tier, context.term_months},
+    )
+    grounding = "ok"
+    bad = ungrounded_numbers(assistant_text, allowed)
+    if bad or not assistant_text:
+        logger.warning("Advisor reply failed grounding (numbers=%s); retrying once", sorted(bad))
+        llm_messages.append({"role": "assistant", "content": assistant_text})
+        llm_messages.append({"role": "user", "content": (
+            f"Your reply contained numbers that are not in the tool results: {sorted(bad)}. Rewrite it using only "
+            "numbers from the tool results. Do not mention any price, discount or speed the tools did not return."
+        )})
+        retry = (llm.chat(llm_messages, tools=None).get("content") or "").strip()
+        if retry and not ungrounded_numbers(retry, allowed):
+            assistant_text, grounding = retry, "retried"
+        else:
+            assistant_text, grounding = fallback_message(final_quote_12m, final_quote_24m), "fallback"
 
     context.history.append({"role": "assistant", "content": assistant_text})
 
@@ -461,4 +491,5 @@ def run_advisor_turn(
         available_addons=final_addons,
         validation_issues=validation_issues,
         next_step=next_step,
+        grounding=grounding,
     )

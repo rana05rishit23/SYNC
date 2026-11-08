@@ -8,3 +8,5 @@ pytest
 httpx
 groq
 python-multipart
+opencv-python-headless
+numpy

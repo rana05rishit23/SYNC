@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from functools import lru_cache
 
-from .validators import is_valid_gstin, is_valid_udyam, repair_gstin, mask_id
+from .validators import is_valid_gstin, is_valid_udyam, repair_gstin, repair_gstin_structured, mask_id
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 
@@ -125,8 +125,10 @@ def verify_gstin_with_repair(
             notes.append("Checksum valid, but not found in mock GSTIN registry")
             return None, notes
 
-    # 2. Repair attempt for OCR misreads
+    # 2. Repair attempt for OCR misreads (character substitutions + structural position repair)
     candidates = repair_gstin(clean)
+    if not candidates:
+        candidates = repair_gstin_structured(clean)
     if candidates:
         notes.append(f"Repaired OCR confusions into candidate(s): {candidates}")
         for cand in candidates:

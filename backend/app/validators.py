@@ -65,3 +65,46 @@ def mask_id(value: str | None, keep_start: int = 4, keep_end: int = 3) -> str:
     if len(value) <= keep_start + keep_end:
         return "*" * len(value)
     return value[:keep_start] + "*" * (len(value) - keep_start - keep_end) + value[-keep_end:]
+
+
+# --- Structure-aware repair (ADR-013) -------------------------------------------------------------
+# A GSTIN has a fixed shape: 2 digits, 5 letters, 4 digits, 1 letter, 1 entity char, constant 'Z', 1 checksum char.
+# Tesseract's lookalike errors (Z read as 2 or 7, I as 1, O as 0 ...) are fixed by forcing each position into
+# its class, then confirmed by the checksum. Callers must still confirm against the registry.
+_DIGIT_POS = {0, 1, 7, 8, 9, 10}
+_LETTER_POS = {2, 3, 4, 5, 6, 11}
+_TO_DIGIT = {"O": "0", "Q": "0", "D": "0", "I": "1", "L": "1", "Z": "2", "S": "5", "B": "8", "G": "6", "T": "7", "A": "4"}
+_TO_LETTER = {"0": "O", "1": "I", "2": "Z", "5": "S", "8": "B", "6": "G", "7": "T", "4": "A"}
+
+
+def _force_structure(s: str) -> str:
+    out = []
+    for i, c in enumerate(s):
+        if i in _DIGIT_POS:
+            c = _TO_DIGIT.get(c, c)
+        elif i in _LETTER_POS:
+            c = _TO_LETTER.get(c, c)
+        elif i == 13:
+            c = "Z"
+        out.append(c)
+    return "".join(out)
+
+
+def repair_gstin_structured(raw: str) -> list[str]:
+    """Checksum-valid GSTINs reachable from noisy OCR text. Handles one inserted or lost character."""
+    s = re.sub(r"[^0-9A-Z]", "", (raw or "").upper())
+    variants: set[str] = set()
+    if len(s) == 15:
+        variants.add(s)
+    elif len(s) == 16:
+        variants |= {s[:i] + s[i + 1:] for i in range(16)}
+    elif len(s) == 14:
+        variants |= {s[:i] + "Z" + s[i:] for i in range(15)}
+    found: list[str] = []
+    for v in variants:
+        n = _force_structure(v)
+        derived = n[:14] + _checksum_char(n[:14]) if re.fullmatch(r"\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z", n[:14]) else None
+        for cand in ([n] if is_valid_gstin(n) else repair_gstin(n, max_edits=2)) + ([derived] if derived else []):
+            if cand not in found:
+                found.append(cand)
+    return sorted(found)

@@ -40,9 +40,9 @@ _LENIENT_GSTIN_RE = re.compile(
     r"\b([0-9O]{2}[A-Z0-9]{5}[0-9O]{4}[A-Z0-9][1-9A-Z][A-Z0-9][0-9A-Z])\b"
 )
 
-# Labeled GSTIN search pattern - robust to OCR braces, colons confused as 'S' or ';', etc.
+# Labeled GSTIN search pattern - robust to OCR braces, colons, spaces, and minor letter confusions
 _LABELED_GSTIN_RE = re.compile(
-    r"(?:GSTIN|GST|Registration\s+Number(?:\s*[\(\{<\[]?\s*GSTIN\s*[\)\}>\]]?)?)\s*[:\-\./;=S\s]*([0-9O]{2}[A-Z0-9]{5}[0-9O]{4}[A-Z0-9][1-9A-Z][A-Z0-9][0-9A-Z])",
+    r"(?:GSTIN|GST|Registration\s+Number(?:\s*[\(\{<\[]?\s*GSTIN\s*[\)\}>\]]?)?)\s*[:\-\./;=\s]*([0-9A-Z]{15})\b",
     re.IGNORECASE,
 )
 
@@ -88,20 +88,18 @@ def preprocess_image(image: Image.Image) -> Image.Image:
     """
     gray = ImageOps.autocontrast(image.convert("L"), cutoff=2)
 
-    # Method 1: OpenCV adaptive thresholding if available
+    # Method 1: OpenCV Otsu thresholding if available
     try:
         import cv2
         import numpy as np
 
         img_np = np.array(gray)
-        thresh = cv2.adaptiveThreshold(
-            img_np, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10
-        )
+        _, thresh = cv2.threshold(img_np, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return Image.fromarray(thresh)
     except ImportError:
         pass
     except Exception as e:
-        logger.warning("OpenCV adaptive thresholding failed: %s", e)
+        logger.warning("OpenCV thresholding failed: %s", e)
 
     # Method 2: NumPy + PIL BoxBlur adaptive thresholding
     try:
@@ -111,7 +109,7 @@ def preprocess_image(image: Image.Image) -> Image.Image:
         arr = np.array(gray, dtype=np.int16)
         blur_arr = np.array(blurred, dtype=np.int16)
         # Background is lighter than text; subtract offset to preserve dark text while removing watermarks
-        thresh = np.where(arr > (blur_arr - 10), 255, 0).astype(np.uint8)
+        thresh = np.where(arr > (blur_arr - 20), 255, 0).astype(np.uint8)
         return Image.fromarray(thresh)
     except ImportError:
         pass

@@ -113,3 +113,44 @@ Reference: Engineering Note "Language-Agnostic Advisor: Supporting Any Language 
 - Submission deliverables: 10-slide business case deck and 3-minute demo video script.
 
 
+
+
+## ADR-013: Case-level KYC on the official specimens
+**Finding:** run on the 47 official documents, the per-document pipeline sent 46 to manual review: the diagonal
+watermark covers the GSTIN, the Udyam certificate never prints a Udyam number, signatory IDs were not recognised, and
+the self-generated fixtures hid all of it. **Change:** `docscan.py` removes the watermark by colour, measures sharpness
+(blurred scan = 26, every other document >= 1000, threshold 300), deskews (only K02, 7.0 degrees) and reads fields by
+label; GSTIN is read from its value column, repaired by position class and checksum, then confirmed against the
+registry or reconciled by name + pincode (owner confirms). Udyam is matched on name + city + state, with an exact-name
+tie-break. `kyc_case.py` decides the applicant from all four documents: rejected (cancelled GSTIN), reupload (blur,
+expired ID, bill older than 90 days), incomplete (missing document), review (documents disagree), approved.
+Golden tests run on the official specimens (`data/kyc_official`); rules are also unit-tested without OCR.
+
+
+## ADR-014: Grounding guards for the advisor
+**Finding (code review of advisor.py):** (1) the text the customer reads was the LLM's prose, never checked against
+the quote; `nlg.render_reply`, which holds the number check, was never called. (2) `tool_propose_and_quote_bundle`
+took employees, sites, city tier **and gstin_status** from the LLM's tool arguments and wrote them into the session,
+so a model that filled in `gstin_status: "Active"` unlocked GST-gated products without any registry check. (3) only
+one round of tool calls was followed. (4) int() on LLM arguments could raise.
+**Change (`guard.py`, `advisor.py`):** every number in the final text must come from a tool result, the catalogue or
+the customer's own messages, else one retry (tools disabled) and then a deterministic summary built from the quote.
+GST status is set only by the registry tool. Slot values and quantities are bounded; bad values fall back to session
+values. Up to 3 tool rounds. Adversarial tests (`test_advisor_grounding.py`) play a sloppy or hostile model.
+**Known limits:** the gate checks numbers, not words, so it cannot catch a false claim without a number; the fallback
+text is English only. Unstated slots still default to 3 employees / Tier 2 / 1 site (to be surfaced as assumptions).
+
+
+## ADR-015: Language detection must say when it does not know
+**Finding:** `/api/chat` called `detect()` with no LLM, so a keyword table inside `FakeLLM` was the production
+detector. On 20 sentences it was right 13 times: Urdu came back as English at 0.99 confidence, Marathi and Nepali in
+Devanagari became Hindi, romanised Marathi, Telugu and Bengali became English. The advisor was never told the language.
+`scripts/lang_eval.py` also fell back to `FakeLLM` without a key, so its "100%" was the table grading itself.
+**Change:** live path detects with the fast Groq model; the offline fallback (`detect_offline`) is small and reports
+low confidence when unsure; an LLM failure falls back to it instead of a confident guess; the response carries
+`ask_language` when confidence < 0.7; the advisor system prompt now states the customer's language; mock benchmark runs
+print a banner and METRICS.md carries a warning.
+**Evidence (offline, held-out set of 12 not used to write the markers):** 7 accepted and correct, 5 routed to "which
+language?" (4 of them correct guesses), 0 confidently wrong. **Still to do:** measure the Groq models themselves on a
+held-out set reviewed by native speakers, and ship a UI language picker.
+

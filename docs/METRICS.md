@@ -45,6 +45,9 @@ Evaluated on synthetic document test set (clean, watermarked, confusable OCR mis
 
 ## 4. Regional Language Advisor Benchmark (Section 5 Spec)
 
+> **Read first:** the table below was produced by the offline mock (a keyword table grading itself), not by a real model. Re-run `python scripts/lang_eval.py` with `GROQ_API_KEY` set, on a held-out set reviewed by native speakers, before citing any number from it.
+
+
 Benchmarked across 18 regional SMB intake prompts (native Indic scripts and code-mixed Latin):
 
 | Language | Script | Detection Accuracy | Slot / Intent Understanding | Number Faithfulness | Operational Mode |

@@ -85,6 +85,14 @@ MODEL_COMPARISON_CASES = [
 ]
 
 
+MOCK_BANNER = (
+    "\n" + "!" * 85 + "\n"
+    "!! MOCK RUN: no GROQ_API_KEY, so a keyword table is grading itself. These numbers say NOTHING about\n"
+    "!! how well a real model handles these languages. Do not cite them. Re-run with a key and a held-out set.\n"
+    + "!" * 85
+)
+
+
 def run_benchmark():
     print("=" * 85)
     print("Project Udyam Digital - Language-Agnostic Evaluator (Section 5 Benchmark)")
@@ -92,6 +100,8 @@ def run_benchmark():
 
     api_key = os.getenv("GROQ_API_KEY")
     llm = GroqLLM() if api_key else FakeLLM()
+    if not api_key:
+        print(MOCK_BANNER)
 
     stats: dict[str, dict[str, int]] = {}
 
