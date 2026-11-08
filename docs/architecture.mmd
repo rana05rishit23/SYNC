@@ -1,0 +1,45 @@
+%% Project Udyam Digital - solution architecture. Paste into mermaid.live or draw.io (Arrange > Insert > Advanced > Mermaid).
+flowchart TB
+  subgraph CLIENT["Owner's phone - React PWA (mobile-first, i18next: Hindi + regional)"]
+    UI1["1 Advisor chat"] --- UI2["2 Quote and add-on toggles"] --- UI3["3 Consent + KYC upload"] --- UI4["4 Order tracker"]
+  end
+  subgraph API["FastAPI backend (REST + streaming)"]
+    GW["API layer: sessions, consent gate, masked logging"]
+  end
+  subgraph AI["AI layer"]
+    ADV["Advisor orchestrator (tool-calling loop)"]
+    GROQ[["Groq API: gpt-oss-120b (advisor), gpt-oss-20b (fast), whisper-large-v3-turbo (voice)"]]
+  end
+  subgraph CORE["Deterministic core (source of truth, unit-tested)"]
+    RULES["Catalogue + rules engine: tier, size, GSTIN, dependencies"]
+    PRICE["Pricing engine: 12/24-month terms, per-unit setup"]
+    KYC["KYC service: OCR, checksum repair, registry match, decision"]
+    ORD["Order service: state machine + ETA"]
+  end
+  subgraph DATA["Data and mocked integrations"]
+    DB[("SQLite: leads, orders, consents, audit log")]
+    CSV[("product_catalogue.csv")]
+    REG[("Mock GSTIN + Udyam registry APIs")]
+    DOCS[("Encrypted KYC document store with TTL")]
+    EXT["Mocked: DigiLocker, e-sign, provisioning"]
+  end
+  subgraph BO["Back-office (stretch)"]
+    CONSOLE["Sales / partner console: unclosed leads + propensity score"]
+  end
+  CLIENT -->|"HTTPS"| GW
+  GW --> ADV
+  ADV <-->|"chat + tool calls"| GROQ
+  ADV -->|"tools"| RULES
+  ADV -->|"tools"| PRICE
+  GW --> PRICE
+  GW --> KYC
+  GW --> ORD
+  RULES --> CSV
+  PRICE --> RULES
+  KYC --> REG
+  KYC --> DOCS
+  KYC -.-> EXT
+  ORD --> DB
+  ORD -.-> EXT
+  GW --> DB
+  DB --> CONSOLE

@@ -1,0 +1,428 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Accel Business · Go digital in one sitting</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#fff;--card:#fff;--ink:#1a1a1a;--mute:#666;--line:#e5e5e5;--red:#e0102d;--tint:#fdf0f1;--ok:#13795b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--card:#1c1c1e;--ink:#f2f2f2;--mute:#a3a3a3;--line:#353538;--tint:#2b1519;--ok:#4ade80}}
+:root[data-theme="dark"]{--bg:#121212;--card:#1c1c1e;--ink:#f2f2f2;--mute:#a3a3a3;--line:#353538;--tint:#2b1519;--ok:#4ade80}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line);gap:10px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:18px}.logo i{width:28px;height:28px;border-radius:8px;background:var(--red);display:grid;place-items:center;color:#fff;font-style:normal}
+.badge-mode{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:0.2px}
+.badge-live{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.badge-demo{background:#fef3c7;color:#b45309;border:1px solid #fde68a}
+header button{margin-left:auto;background:none;border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer}
+.hero{background:var(--tint);padding:24px 20px 18px}.wrap{max-width:760px;margin:0 auto}
+h1{font-size:clamp(22px,4.5vw,32px);margin:0 0 6px;font-weight:600}.hero p{margin:0;color:var(--mute)}
+.steps{display:flex;gap:6px;margin-top:16px}.steps div{flex:1;font-size:12px;color:var(--mute);border-top:3px solid var(--line);padding-top:6px}.steps .on{border-color:var(--red);color:var(--ink);font-weight:500}
+main{padding:20px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}
+h2{font-size:18px;margin:0 0 12px;font-weight:600}
+label{display:block;font-size:13px;color:var(--mute);margin-bottom:12px}
+input,select{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:flex;gap:12px}.row>*{flex:1}
+.btn{background:var(--red);color:#fff;border:0;border-radius:999px;padding:12px 24px;font:inherit;font-weight:500;cursor:pointer;width:100%}.btn:disabled,.ghost:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:none;color:var(--red);border:1px solid var(--red)}
+.item{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}.item:first-of-type{border-top:0}
+.item b{font-weight:500}.item small,.mute{color:var(--mute);font-size:13px}.pr{margin-left:auto;white-space:nowrap;font-weight:500}
+.item input{width:auto;margin:4px 0 0}
+.terms{display:flex;gap:10px;margin-bottom:12px}.terms button{flex:1;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}.terms .on{border-color:var(--red);background:var(--tint)}
+.tot{font-size:28px;font-weight:600}.note{padding:10px 12px;border-radius:10px;background:var(--tint);font-size:13px;margin:10px 0}
+.ok{color:var(--ok)}.bad{color:var(--red)}
+.chip{display:inline-block;margin:4px 6px 8px 0;padding:4px 10px;border:1px solid var(--line);border-radius:999px;font-size:12px;cursor:pointer;color:var(--mute)}
+.tl{list-style:none;margin:16px 0;padding:0}.tl li{display:flex;gap:12px;padding-bottom:16px}.tl li:before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid var(--line);flex:none;margin-top:4px}.tl li.d:before{background:var(--red);border-color:var(--red)}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--mute);border-top-color:var(--red);border-radius:50%;animation:spin 1s linear infinite;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Chat Advisor Styles */
+.chat-container{display:flex;flex-direction:column;gap:12px;max-height:460px;overflow-y:auto;padding:4px 2px 12px}
+.chat-row{display:flex;gap:10px;align-items:flex-start}
+.chat-row.user{flex-direction:row-reverse}
+.chat-avatar{width:30px;height:30px;border-radius:8px;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:600;font-size:13px;flex-shrink:0}
+.chat-avatar.user{background:var(--ink);color:var(--bg)}
+.chat-bubble{padding:12px 16px;border-radius:14px;max-width:85%;font-size:14px;line-height:1.5}
+.chat-bubble.bot{background:var(--tint);color:var(--ink);border-top-left-radius:3px}
+.chat-bubble.user{background:var(--ink);color:var(--bg);border-top-right-radius:3px}
+.chips-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip-btn{background:var(--bg);border:1px solid var(--red);color:var(--red);padding:6px 14px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.chip-btn:hover{background:var(--red);color:#fff}
+.chat-input-bar{display:flex;gap:8px;margin-top:14px}
+.chat-input-bar input{flex:1;margin:0}
+.chat-input-bar button{width:auto;padding:10px 20px}
+.plan-preview{border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;background:var(--card)}
+footer{padding:8px 20px 28px;text-align:center;color:var(--mute);font-size:12px}
+</style></head><body>
+<header>
+  <div class="logo"><i>a</i>accel business</div>
+  <div id="mode-badge" class="badge-mode badge-demo">● Demo Mode (Mock AI)</div>
+  <button onclick="lang()" id="lb">हिन्दी</button>
+</header>
+<section class="hero"><div class="wrap"><h1 id="h"></h1><p id="s"></p><div class="steps" id="st"></div></div></section>
+<main><div class="wrap" id="app"></div></main>
+<footer>Accel Business is a fictional operator created for the YTL Hackathon case study. Synthetic data for research.</footer>
+
+<script>
+// Session ID restricted to safe characters [A-Za-z0-9_-]{1,64}
+const SESS = 'udyam_sess_' + Math.random().toString(36).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
+const CAT=[["P01","Biz Fibre 100","per site",999,1199,0,12,"1;2",1,1,0,"",5],["P02","Biz Fibre 300","per site",1499,1799,0,12,"1;2",1,1,0,"",5],["P03","Biz Fibre 1G","per site",3999,4499,0,12,"1",5,1,1,"",7],["P04","Biz 5G AirFiber 100","per site",899,1099,0,6,"1;2",1,1,0,"",2],["P05","Internet Leased Line 20","per site",8000,12000,10000,12,"1;2",10,1,1,"",21],["P06","Internet Leased Line 100","per site",25000,35000,15000,24,"1;2",25,1,1,"",30],["P07","Business Postpaid 299","per line",299,399,0,1,"1;2",1,1,0,"",1],["P08","Business Postpaid 599","per line",599,799,0,1,"1;2",1,1,0,"",1],["P09","Backup 4G/5G Failover","per site",499,599,1500,12,"1;2",1,1,0,"P01|P02|P03|P05|P06",3],["P10","Managed SD-WAN","per site",2500,3500,5000,24,"1;2",10,3,1,"P01|P02|P03|P05|P06",14],["P11","Static IP","per IP",200,300,0,12,"1;2",1,1,0,"P01|P02|P03",1],["P12","Cloud Telephony / SIP","per channel",1000,1500,2000,12,"1;2",3,1,1,"P01|P02|P03|P04|P05|P06",5],["P13","Toll-free Number","per number",1500,2000,1000,12,"1;2",1,1,1,"",3],["P14","Business SMS 10k","per pack",1500,2000,0,1,"1;2",1,1,1,"",4],["P15","WhatsApp Business API Starter","per account",999,1499,0,3,"1;2",1,1,1,"",3],["P16","Cloud Email & Office Suite","per user",125,150,0,12,"1;2",1,1,0,"",1],["P17","Cloud Backup 1 TB","per account",499,699,0,12,"1;2",1,1,0,"",1],["P18","Website + Domain Starter","per account",299,499,0,12,"1;2",1,1,0,"",2],["P19","Cloud POS & Billing","per counter",599,899,2500,12,"1;2",1,1,0,"",3],["P20","Endpoint Security","per device",99,149,0,12,"1;2",1,1,0,"",1],["P21","Managed Firewall","per site",1999,2999,4000,24,"1;2",10,1,1,"P01|P02|P03|P05|P06",10],["P22","Secure Wi-Fi with Guest Network","per site",399,599,1000,12,"1;2",1,1,0,"P01|P02|P03|P04",3],["P23","Cloud CCTV","per camera",199,299,1800,12,"1;2",1,1,0,"P01|P02|P03|P04|P05|P06",4],["P24","Machine Monitoring IoT","per device",149,249,3000,24,"1;2",10,1,1,"",10],["P25","Fleet Tracker","per vehicle",199,299,1500,12,"1;2",1,1,0,"",3]],REG={"32TTNXB7384T1ZW":["Balaji Dental Care LLP","Active"],"03PJNXS4821G1ZB":["Saffron Bakers","Active"],"33MFTXS9954Q1Z9":["Star Electronics","Active"],"37IHKXV5167L1ZS":["Vindhya Tours & Travels","Cancelled"],"23QYBXS1811Q1ZD":["Sahyadri Realty","Suspended"]},SAMPLES=Object.keys(REG),C={};
+CAT.forEach(a=>C[a[0]]={id:a[0],n:a[1],u:a[2],lo:a[3],hi:a[4],su:a[5],tm:a[6],t:a[7].split(';').map(Number),e:a[8],s:a[9],g:a[10],d:a[11]?a[11].split('|'):[],days:a[12]});
+const PCT={12:40,24:80},CS='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',$=s=>document.querySelector(s);
+const T={en:{h:'Go digital in one sitting',s:'Conversational advisor, transparent term pricing, instant KYC.',st:['Advisor','Quote','KYC','Track'],cta:'Show my plan',b:'हिन्दी'},
+hi:{h:'एक बैठक में अपना बिज़नेस डिजिटल बनाएँ',s:'संवाद आधारित सलाहकार, पारदर्शी कीमतें और तुरंत KYC।',st:['सलाहकार','कोट','KYC','ट्रैक'],cta:'मेरा प्लान दिखाएँ',b:'English'}};
+
+// State
+const S={
+  step:1,
+  lang:'en',
+  f:{seg:'micro',emp:3,sites:1,tier:2,gstOn:true,gst:'Active'},
+  items:{},why:{},skip:[],term:12,
+  consent:false,ver:null,msg:'',order:'',
+  backendQuote:null,kycUploading:false,kycMsg:'',
+  groqConfigured:false,
+  chatMessages:[
+    {role:'assistant',content:'Namaste! Welcome to Accel Business. I am your Digital Onboarding Advisor. What kind of business do you run?'}
+  ],
+  quickChips:['Shop, salon or pharmacy (Micro)','Clinic, CA firm or coaching (Professional)','Restaurant or multi-store retail (Multi-site)','Small factory or workshop (Manufacturing)'],
+  detectedLang:null,
+  chatLoading:false,
+  planReady:false
+};
+
+const fmt=n=>'₹'+Math.round(n).toLocaleString('en-IN'),mask=g=>g.slice(0,4)+'•'.repeat(8)+g.slice(-3);
+const price=(p,t)=>p.hi-Math.floor(((p.hi-p.lo)*PCT[t]+50)/100);
+
+// Unified API Caller
+async function api(path, method='GET', body=null) {
+  try {
+    const opts = { method, headers: {} };
+    if (body instanceof FormData) opts.body = body;
+    else if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch('/api' + path, opts);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'API ' + res.status);
+    }
+    return await res.json();
+  } catch (e) {
+    console.warn('API error [' + path + ']:', e.message);
+    return null;
+  }
+}
+
+// Initial health check to set Live AI vs Demo Mode badge
+async function checkHealth() {
+  const h = await api('/health');
+  if (h) {
+    S.groqConfigured = !!h.groq_configured;
+    const b = $('#mode-badge');
+    if (b) {
+      if (S.groqConfigured) {
+        b.className = 'badge-mode badge-live';
+        b.textContent = '● Live AI (Groq)';
+      } else {
+        b.className = 'badge-mode badge-demo';
+        b.textContent = '● Demo Mode (Mock AI)';
+      }
+    }
+  }
+}
+
+function chk(p,f){const r=[];if(!p.t.includes(f.tier))r.push('not yet available in Tier '+f.tier+' cities');if(f.emp<p.e)r.push('needs '+p.e+'+ employees');if(f.sites<p.s)r.push('needs '+p.s+'+ locations');if(p.g){if(!f.gst)r.push('needs a GST registration');else if(f.gst!=='Active')r.push('your GSTIN is '+f.gst.toLowerCase())}return r}
+function val(items){const o=[];for(const id in items){const p=C[id],r=chk(p,S.f);if(p.d.length&&!p.d.some(x=>x in items))r.push('needs an internet plan in the bundle');if(r.length)o.push([id,r])}return o}
+function gOK(g){if(!/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g))return false;let t=0;for(let i=0;i<14;i++){const p=CS.indexOf(g[i])*(i%2?2:1);t+=Math.floor(p/36)+p%36}return CS[(36-t%36)%36]===g[14]}
+
+const terms=()=>{const fl=Math.max(...Object.keys(S.items).map(i=>C[i].tm), 12);return[12,24].filter(x=>x>=fl)};
+function quote(t){
+  if(S.backendQuote && S.backendQuote.term_months === t) {
+    return { m: S.backendQuote.monthly_total, o: S.backendQuote.one_time_total, sav: S.backendQuote.saving_vs_baseline_monthly };
+  }
+  let m=0,o=0;for(const i in S.items){m+=price(C[i],t)*S.items[i];o+=C[i].su*S.items[i]}
+  return{m,o,sav:0};
+}
+
+// ---------------------------------------------------------------------------
+// Step 1: Chat Advisor with Quick-Reply Chips
+// ---------------------------------------------------------------------------
+async function sendChat(text) {
+  if (!text || !text.trim() || S.chatLoading) return;
+  const msg = text.trim();
+  S.chatMessages.push({ role: 'user', content: msg });
+  S.chatLoading = true;
+  render();
+
+  const res = await api('/chat', 'POST', {
+    session_id: SESS,
+    message: msg,
+    preferred_language: S.lang === 'hi' ? 'Hindi' : 'English'
+  });
+
+  S.chatLoading = false;
+  if (res) {
+    if (res.detected_language) S.detectedLang = res.detected_language;
+    if (res.groq_configured !== undefined) S.groqConfigured = res.groq_configured;
+    S.chatMessages.push({ role: 'assistant', content: res.message });
+    if (res.quick_chips && res.quick_chips.length) S.quickChips = res.quick_chips;
+    if (res.segment) S.f.seg = res.segment;
+    if (res.bundle && Object.keys(res.bundle).length) {
+      S.items = res.bundle;
+      S.planReady = true;
+    }
+    if (res.quote) {
+      S.backendQuote = res.quote;
+      S.planReady = true;
+    }
+  } else {
+    // Fallback response if server unreachable
+    S.chatMessages.push({ role: 'assistant', content: 'Understood. We have tailored a package for your business. Click below to view and customize your transparent quote.' });
+    S.planReady = true;
+  }
+  render();
+  setTimeout(() => {
+    const el = document.getElementById('chat-scroll');
+    if (el) el.scrollTop = el.scrollHeight;
+  }, 50);
+}
+
+function goToStep2() {
+  if (!Object.keys(S.items).length) {
+    // Fallback default starter bundle if not populated
+    S.items = { P01: 1, P07: 1, P19: 1 };
+  }
+  S.step = 2;
+  S.term = 12;
+  render();
+}
+
+function v1(t){
+  return `<section class="card">
+  <h2>Intelligent Multilingual Advisor</h2>
+  <p class="mute" style="margin-top:-6px;font-size:13px">Speak or type in Hindi, Hinglish, Marathi, Tamil, or English. You can also pick a quick-reply chip below.</p>
+  
+  <div class="chat-container" id="chat-scroll">
+    ${S.chatMessages.map(m => `
+      <div class="chat-row ${m.role}">
+        <div class="chat-avatar ${m.role}">${m.role === 'assistant' ? 'a' : 'You'}</div>
+        <div class="chat-bubble ${m.role === 'assistant' ? 'bot' : 'user'}">${m.content}</div>
+      </div>
+    `).join('')}
+    ${S.chatLoading ? `<div class="chat-row assistant"><div class="chat-avatar">a</div><div class="chat-bubble bot"><span class="spinner"></span> Consulting advisor rules engine...</div></div>` : ''}
+  </div>
+
+  ${S.detectedLang ? `<div class="note" style="font-size:12px;padding:6px 10px;margin-bottom:10px">Language detected: <b>${S.detectedLang}</b></div>` : ''}
+
+  ${S.quickChips && S.quickChips.length ? `
+    <div style="font-size:12px;color:var(--mute);margin-top:8px">Quick-reply suggestions:</div>
+    <div class="chips-grid">
+      ${S.quickChips.map(c => `<button class="chip-btn" onclick="sendChat('${c.replace(/'/g, "\\'")}')">${c}</button>`).join('')}
+    </div>
+  ` : ''}
+
+  <div class="chat-input-bar">
+    <input id="ci" placeholder="Describe your business or needs..." onkeydown="if(event.key==='Enter')sendChat(this.value)">
+    <button class="btn" style="width:auto" onclick="sendChat($('#ci').value)">Send</button>
+  </div>
+
+  ${S.planReady ? `
+    <div class="plan-preview">
+      <b>✨ Package Recommendation Ready</b>
+      <p class="mute" style="margin:4px 0 12px;font-size:13px">Your customized, rule-verified bundle is ready for review.</p>
+      <button class="btn" onclick="goToStep2()">Review & Customize Quote (${S.backendQuote ? fmt(S.backendQuote.monthly_total)+'/mo' : 'View Plan'}) →</button>
+    </div>
+  ` : ''}
+  </section>`;
+}
+
+// ---------------------------------------------------------------------------
+// Step 2: Interactive Quote & Add-ons
+// ---------------------------------------------------------------------------
+async function selectTerm(x) {
+  S.term = x;
+  const qRes = await api('/quote', 'POST', {
+    profile: { city_tier: S.f.tier, employees: S.f.emp, sites: S.f.sites, gstin_status: S.f.gst },
+    items: S.items,
+    term_months: x
+  });
+  if (qRes && qRes.valid) S.backendQuote = qRes;
+  render();
+}
+
+async function tg(id){
+  const n={...S.items};
+  S.msg='';
+  const res = await api('/quote/toggle-addon', 'POST', {
+    profile: { city_tier: S.f.tier, employees: S.f.emp, sites: S.f.sites, gstin_status: S.f.gst },
+    current_items: n,
+    product_id: id,
+    action: 'toggle',
+    term_months: S.term
+  });
+  if (res) {
+    if (res.valid) {
+      S.items = res.current_items;
+      S.backendQuote = res.quote;
+    } else {
+      S.msg = (res.issues || []).join('; ');
+    }
+  } else {
+    if(id in n) delete n[id]; else n[id]=1;
+    const bad=val(n);if(bad.length)S.msg=bad.map(([i,r])=>`${C[i].n} ${r.join(', ')}`).join('; ');else S.items=n;
+  }
+  render();
+}
+
+function v2(){
+  const ts=terms();if(!ts.includes(S.term))S.term=ts[0];
+  const q=quote(S.term),b=quote(12),inc=Object.keys(S.items);
+  const add=Object.keys(C).filter(id=>!(id in S.items)&&!val({...S.items,[id]:1}).some(x=>x[0]==id));
+  const row=(id,on)=>{const p=C[id],n=S.items[id]||1;return `<div class="item"><input type="checkbox" ${on?'checked':''} onchange="tg('${id}')"><div><b>${p.n}</b> <small>× ${n} ${p.u.replace('per ','')}</small><br><small>${S.why[id]||p.u}</small></div><div class="pr">${fmt(price(p,S.term)*n)}/mo</div></div>`};
+  const savingText = (S.term === 24 && (b.m > q.m)) ? ` · you save ${fmt(b.m - q.m)}/mo (term discount)` : '';
+
+  return `<section class="card"><h2>Your recommended plan</h2>
+  ${inc.map(i=>row(i,1)).join('')||'<p class="mute">Nothing selected.</p>'}
+  ${S.msg?`<div class="note bad">${S.msg}</div>`:''}
+  ${S.skip.length?`<div class="note">Not included: ${S.skip.map(([i,r])=>`${C[i].n} (${r})`).join('; ')}</div>`:''}
+  </section>
+  <section class="card"><h2>Optional add-ons</h2>${add.map(i=>row(i,0)).join('')}</section>
+  <section class="card">
+    <div class="terms">${ts.map(x=>`<button class="${x==S.term?'on':''}" onclick="selectTerm(${x})">${x} months<br><small>${fmt(quote(x).m)}/mo</small></button>`).join('')}</div>
+    <div class="tot">${fmt(q.m)}<small class="mute"> /month</small></div>
+    <p class="mute">+ ${fmt(q.o)} one-time setup · first payment ${fmt(q.m+q.o)}${savingText}</p>
+    <button class="btn" ${inc.length?'':'disabled'} onclick="S.step=3;render()">Continue to KYC Verification →</button>
+  </section>`;
+}
+
+// ---------------------------------------------------------------------------
+// Step 3: DPDP Consent & Smart KYC Verification
+// ---------------------------------------------------------------------------
+async function setConsent(checked) {
+  S.consent = checked;
+  if (checked) {
+    await api('/consent', 'POST', {
+      session_id: SESS,
+      owner_name: 'Business Owner',
+      phone: '9876543210',
+      purpose: 'Digital onboarding & KYC verification'
+    });
+  } else {
+    // DPDP withdrawal endpoint
+    await api('/consent/' + SESS, 'DELETE');
+    S.ver = null;
+    S.kycMsg = '';
+  }
+  render();
+}
+
+async function vf(){
+  const g=($('#gi').value||'').trim().toUpperCase();
+  let v;
+  const res = await api('/registry/gstin/' + encodeURIComponent(g));
+  if (res) {
+    v = { g: res.gstin, name: res.trade_name || res.legal_name, st: res.status, masked: res.masked_gstin, notes: res.audit_notes };
+    S.f.gst = res.status;
+    if (res.status !== 'Active') {
+      const cut = [];
+      let b;
+      while((b=val(S.items)).length) b.forEach(([i]) => { cut.push(C[i].n); delete S.items[i]; });
+      v.cut = cut.join(', ');
+    }
+  } else {
+    if(!gOK(g))v={err:'That GSTIN’s format or checksum is invalid. Please check and retry.'};
+    else if(!REG[g])v={err:'No record found in the GST registry.'};
+    else{const[name,st]=REG[g];v={g,name,st};S.f.gst=st;if(st!='Active'){const cut=[];let b;while((b=val(S.items)).length)b.forEach(([i])=>{cut.push(C[i].n);delete S.items[i]});v.cut=cut.join(', ')}}
+  }
+  S.ver=v;render();
+}
+
+async function uploadDoc(input, docLabel) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  S.kycUploading = true;
+  S.kycMsg = '<span class="spinner"></span> Running Smart KYC 4-layer verification on ' + docLabel + '...';
+  render();
+
+  if (!S.consent) await setConsent(true);
+
+  const fd = new FormData();
+  fd.append('session_id', SESS);
+  fd.append('file', file);
+
+  const res = await api('/kyc/upload', 'POST', fd);
+  S.kycUploading = false;
+  if (res) {
+    if (res.extracted_gstin && $('#gi')) {
+      $('#gi').value = res.extracted_gstin;
+      await vf();
+    }
+    if (res.status === 'approved') {
+      S.kycMsg = `<b>✅ ${docLabel} Approved</b><br>${res.extracted_name || ''} verified against registry (Confidence: ${res.audit_trail ? res.audit_trail[2] : 'Verified'}).`;
+    } else if (res.status === 'review') {
+      S.kycMsg = `<b>⚠️ ${docLabel} Queued for Review</b><br>${res.audit_trail ? res.audit_trail.slice(-1)[0] : 'Manual verification needed'}.`;
+    } else {
+      S.kycMsg = `<b>❌ ${docLabel} Rejected</b><br>${res.audit_trail ? res.audit_trail.slice(-1)[0] : 'Document validation failed'}.`;
+    }
+  } else {
+    S.kycMsg = `Uploaded ${docLabel} (Mock local mode)`;
+  }
+  render();
+}
+
+function v3(){
+  const v=S.ver,ok=S.consent&&(!S.f.gstOn||(v&&!v.err)),d=S.consent?'':'disabled';
+  return `<section class="card">
+  <h2>Verify your business (Smart KYC)</h2>
+  <label><input type="checkbox" ${S.consent?'checked':''} onchange="setConsent(this.checked)" style="display:inline;width:auto;margin-right:8px">I agree that Accel Business may use my GSTIN and documents only to verify my business and set up this order. I can withdraw consent at any time. Documents are purged 90 days after activation in compliance with DPDP principles.</label>
+  
+  ${S.f.gstOn?`
+    <label>GSTIN<input id="gi" maxlength="15" placeholder="15-character GSTIN" value="${v&&v.g?v.g:''}" ${d}></label>
+    <div class="mute">Demo GSTINs:</div>
+    ${SAMPLES.map(g=>`<span class="chip" onclick="$('#gi').value='${g}';vf()">${REG[g][1]} · ${mask(g)}</span>`).join('')}
+    <button class="btn ghost" ${d} onclick="vf()">Verify GSTIN</button>
+    ${v?`<div class="note">${v.err?`<span class="bad">${v.err}</span>`:`<b>${v.name}</b> · ${v.masked||mask(v.g)}<br><span class="${v.st=='Active'?'ok':'bad'}">${v.st}</span>${v.cut?`<br>Because this GSTIN is ${v.st.toLowerCase()}, we removed: ${v.cut}`:''}`}</div>`:''}
+  `:''}
+
+  ${['Udyam certificate','Signatory ID','Address proof (under 90 days old)'].map(x=>`<label>${x}<input type="file" accept="image/*,.pdf" ${d} onchange="uploadDoc(this, '${x}')"></label>`).join('')}
+  
+  ${S.kycMsg?`<div class="note">${S.kycMsg}</div>`:''}
+  <p class="mute">Live 4-Layer KYC Pipeline: Adaptive Watermark OCR → Checksum Repair → Registry Cross-Check → Human Review Queue.</p>
+  <button class="btn" ${ok?'':'disabled'} onclick="S.order='UD-'+String(Date.now()).slice(-5);S.step=4;render()">Place Order</button>
+  </section>`;
+}
+
+// ---------------------------------------------------------------------------
+// Step 4: Order Tracker
+// ---------------------------------------------------------------------------
+function v4(){
+  const d=Math.max(...Object.keys(S.items).map(i=>C[i].days), 3);
+  const B=Date.UTC(2026,6,15);
+  const f=n=>new Date(B+n*864e5).toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'UTC'});
+  const st=[['Order placed',0,1],['KYC verified',0,1],['Installation scheduled',1,0],['Installed',d,0],['Activated',d+1,0]];
+  const q=quote(S.term);
+
+  return `<section class="card">
+  <h2>Order ${S.order}</h2>
+  <p class="mute">${fmt(q.m)}/month · ${S.term}-month term · expected activation <b>${f(d+1)}</b></p>
+  <ul class="tl">${st.map(([n,x,dn])=>`<li class="${dn?'d':''}"><div><b>${n}</b><br><small class="mute">${dn?'Done · ':'Expected '}${f(x)}</small></div></li>`).join('')}</ul>
+  <button class="btn ghost" onclick="S.step=1;S.planReady=false;render()">Start a new plan</button>
+  </section>`;
+}
+
+async function lang(){
+  const nextLang = S.lang === 'en' ? 'hi' : 'en';
+  const i18nData = await api('/i18n/' + (nextLang === 'hi' ? 'Hindi' : 'English'));
+  S.lang = nextLang;
+  render();
+}
+
+function render(){
+  const t=T[S.lang];
+  $('#h').textContent=t.h;
+  $('#s').textContent=t.s;
+  $('#lb').textContent=t.b;
+  $('#st').innerHTML=t.st.map((x,i)=>`<div class="${S.step==i+1?'on':''}">${i+1}. ${x}</div>`).join('');
+  $('#app').innerHTML=[v1,v2,v3,v4][S.step-1](t);
+}
+
+render();
+checkHealth();
+</script></body></html>
